@@ -336,6 +336,30 @@
       </tags>
   </entry>
   <entry>
+    <title>x的平方根</title>
+    <url>/2023/05/29/x%E7%9A%84%E5%B9%B3%E6%96%B9%E6%A0%B9/</url>
+    <content><![CDATA[<p>leetcode 69题：x的平方根</p>
+<span id="more"></span>
+<p>题目：给你一个非负整数 <code>x</code> ，计算并返回 <code>x</code> 的 <strong>算术平方根</strong>。由于返回类型是整数，结果只保留 <strong>整数部分</strong> ，小数部分将被 舍去 。<strong>注意：</strong>不允许使用任何内置指数函数和算符，例如 <code>pow(x, 0.5)</code> 或者 <code>x ** 0.5</code> </p>
+<h1 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h1><p>代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="variable">left</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span> <span class="variable">right</span> <span class="operator">=</span> x;</span><br><span class="line"><span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">mid</span> <span class="operator">=</span> (right - left) &gt;&gt; <span class="number">1</span> + left;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">long</span>) mid * mid &gt; x) &#123;</span><br><span class="line">        right = mid;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        left = mid;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> left;</span><br></pre></td></tr></table></figure>
+<p>使用二分法结果正确，但是超出时间限制。</p>
+<h1 id="牛顿迭代法"><a href="#牛顿迭代法" class="headerlink" title="牛顿迭代法"></a>牛顿迭代法</h1><p><a href="https://leetcode.cn/link/?target=https://baike.baidu.com/item/牛顿迭代法">牛顿迭代法</a>是一种可以用来快速求解函数零点的方法。</p>
+<script type="math/tex; mode=display">
+y = f(x)=x^2 -C</script><p><em>C</em> 的平方根就是函数的零点。</p>
+<p>牛顿迭代法的本质是借助泰勒级数，从初始值开始快速向零点逼近。我们任取一个 $x_0$作为初始值，在每一步的迭代中，我们找到函数图像上的点 $(x_i, f(x_i))$,过该点作一条斜率为该点导数$f(x_i)$的直线，与横轴的交点记为$x_{i+1}$。$x_{i+1}$相较于而言$x_i$距离零点更近。在经过多次迭代后，我们就可以得到一个距离零点非常接近的交点。下图给出了从$x_0$开始迭代两次，得到$x_1$ 和$x_2$的过程。</p>
+<p><img src="/images/牛顿迭代.png" alt="牛顿迭代"></p>
+<p>根号<em>C</em>就是$x^2-C=0$的一个正实根，这个函数的导数是<em>2x</em>。函数上任一点 $(x_i, f(x_i))$处的切线斜率是2x。$x-f(x)/(2x)$就是一个比<em>x</em> 更接近的近似值。代入$f(x)=x^2 -C $得到$x-(x^2-a)/(2x)$,也就是$(x+C/x)/2$。</p>
+<p>代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> s;</span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">mySqrt</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    s = x;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">0</span>) <span class="keyword">return</span> x;</span><br><span class="line">    <span class="keyword">return</span> ((<span class="type">int</span>) (sqrts(x)));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">double</span> <span class="title function_">sqrts</span><span class="params">(<span class="type">double</span> x)</span> &#123;</span><br><span class="line">    <span class="type">double</span> <span class="variable">res</span> <span class="operator">=</span> (x + s / x) / <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">if</span> (res == x) &#123;</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> sqrts(res); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>牛顿迭代解题思路引用：</p>
+<p>作者：<a href="https://leetcode.cn/u/loafer/">LOAFER</a><br>链接：<a href="https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/">https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/</a></p>
+]]></content>
+      <tags>
+        <tag>牛顿迭代法</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>前缀和</title>
     <url>/2023/06/02/%E5%89%8D%E7%BC%80%E5%92%8C/</url>
     <content><![CDATA[<p>leetcode  <a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/">2559. 统计范围内的元音字符串数</a></p>
@@ -392,29 +416,5 @@
     <title>aa</title>
     <url>/2023/07/07/aa/</url>
     <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>x的平方根</title>
-    <url>/2023/05/29/x%E7%9A%84%E5%B9%B3%E6%96%B9%E6%A0%B9/</url>
-    <content><![CDATA[<p>leetcode 69题：x的平方根</p>
-<span id="more"></span>
-<p>题目：给你一个非负整数 <code>x</code> ，计算并返回 <code>x</code> 的 <strong>算术平方根</strong>。由于返回类型是整数，结果只保留 <strong>整数部分</strong> ，小数部分将被 舍去 。<strong>注意：</strong>不允许使用任何内置指数函数和算符，例如 <code>pow(x, 0.5)</code> 或者 <code>x ** 0.5</code> </p>
-<h1 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h1><p>代码如下：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="variable">left</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span> <span class="variable">right</span> <span class="operator">=</span> x;</span><br><span class="line"><span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">mid</span> <span class="operator">=</span> (right - left) &gt;&gt; <span class="number">1</span> + left;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">long</span>) mid * mid &gt; x) &#123;</span><br><span class="line">        right = mid;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        left = mid;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> left;</span><br></pre></td></tr></table></figure>
-<p>使用二分法结果正确，但是超出时间限制。</p>
-<h1 id="牛顿迭代法"><a href="#牛顿迭代法" class="headerlink" title="牛顿迭代法"></a>牛顿迭代法</h1><p><a href="https://leetcode.cn/link/?target=https://baike.baidu.com/item/牛顿迭代法">牛顿迭代法</a>是一种可以用来快速求解函数零点的方法。</p>
-<script type="math/tex; mode=display">
-y = f(x)=x^2 -C</script><p><em>C</em> 的平方根就是函数的零点。</p>
-<p>牛顿迭代法的本质是借助泰勒级数，从初始值开始快速向零点逼近。我们任取一个 $x_0$作为初始值，在每一步的迭代中，我们找到函数图像上的点 $(x_i, f(x_i))$,过该点作一条斜率为该点导数$f(x_i)$的直线，与横轴的交点记为$x_{i+1}$。$x_{i+1}$相较于而言$x_i$距离零点更近。在经过多次迭代后，我们就可以得到一个距离零点非常接近的交点。下图给出了从$x_0$开始迭代两次，得到$x_1$ 和$x_2$的过程。</p>
-<p><img src="/images/牛顿迭代.png" alt="牛顿迭代"></p>
-<p>根号<em>C</em>就是$x^2-C=0$的一个正实根，这个函数的导数是<em>2x</em>。函数上任一点 $(x_i, f(x_i))$处的切线斜率是2x。$x-f(x)/(2x)$就是一个比<em>x</em> 更接近的近似值。代入$f(x)=x^2 -C $得到$x-(x^2-a)/(2x)$,也就是$(x+C/x)/2$。</p>
-<p>代码如下：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> s;</span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">mySqrt</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    s = x;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">0</span>) <span class="keyword">return</span> x;</span><br><span class="line">    <span class="keyword">return</span> ((<span class="type">int</span>) (sqrts(x)));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">double</span> <span class="title function_">sqrts</span><span class="params">(<span class="type">double</span> x)</span> &#123;</span><br><span class="line">    <span class="type">double</span> <span class="variable">res</span> <span class="operator">=</span> (x + s / x) / <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">if</span> (res == x) &#123;</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> sqrts(res); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>牛顿迭代解题思路引用：</p>
-<p>作者：<a href="https://leetcode.cn/u/loafer/">LOAFER</a><br>链接：<a href="https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/">https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/</a></p>
-]]></content>
-      <tags>
-        <tag>牛顿迭代法</tag>
-      </tags>
   </entry>
 </search>
