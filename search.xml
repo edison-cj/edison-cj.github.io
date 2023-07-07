@@ -1,88 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>x的平方根</title>
-    <url>/2023/05/29/x%E7%9A%84%E5%B9%B3%E6%96%B9%E6%A0%B9/</url>
-    <content><![CDATA[<p>leetcode 69题：x的平方根</p>
-<span id="more"></span>
-<p>题目：给你一个非负整数 <code>x</code> ，计算并返回 <code>x</code> 的 <strong>算术平方根</strong>。由于返回类型是整数，结果只保留 <strong>整数部分</strong> ，小数部分将被 舍去 。<strong>注意：</strong>不允许使用任何内置指数函数和算符，例如 <code>pow(x, 0.5)</code> 或者 <code>x ** 0.5</code> </p>
-<h1 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h1><p>代码如下：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="variable">left</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span> <span class="variable">right</span> <span class="operator">=</span> x;</span><br><span class="line"><span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">mid</span> <span class="operator">=</span> (right - left) &gt;&gt; <span class="number">1</span> + left;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">long</span>) mid * mid &gt; x) &#123;</span><br><span class="line">        right = mid;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        left = mid;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> left;</span><br></pre></td></tr></table></figure>
-<p>使用二分法结果正确，但是超出时间限制。</p>
-<h1 id="牛顿迭代法"><a href="#牛顿迭代法" class="headerlink" title="牛顿迭代法"></a>牛顿迭代法</h1><p><a href="https://leetcode.cn/link/?target=https://baike.baidu.com/item/牛顿迭代法">牛顿迭代法</a>是一种可以用来快速求解函数零点的方法。</p>
-<script type="math/tex; mode=display">
-y = f(x)=x^2 -C</script><p><em>C</em> 的平方根就是函数的零点。</p>
-<p>牛顿迭代法的本质是借助泰勒级数，从初始值开始快速向零点逼近。我们任取一个 $x_0$作为初始值，在每一步的迭代中，我们找到函数图像上的点 $(x_i, f(x_i))$,过该点作一条斜率为该点导数$f(x_i)$的直线，与横轴的交点记为$x_{i+1}$。$x_{i+1}$相较于而言$x_i$距离零点更近。在经过多次迭代后，我们就可以得到一个距离零点非常接近的交点。下图给出了从$x_0$开始迭代两次，得到$x_1$ 和$x_2$的过程。</p>
-<p><img src="/images/牛顿迭代.png" alt="牛顿迭代"></p>
-<p>根号<em>C</em>就是$x^2-C=0$的一个正实根，这个函数的导数是<em>2x</em>。函数上任一点 $(x_i, f(x_i))$处的切线斜率是2x。$x-f(x)/(2x)$就是一个比<em>x</em> 更接近的近似值。代入$f(x)=x^2 -C $得到$x-(x^2-a)/(2x)$,也就是$(x+C/x)/2$。</p>
-<p>代码如下：</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> s;</span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">mySqrt</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    s = x;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">0</span>) <span class="keyword">return</span> x;</span><br><span class="line">    <span class="keyword">return</span> ((<span class="type">int</span>) (sqrts(x)));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">double</span> <span class="title function_">sqrts</span><span class="params">(<span class="type">double</span> x)</span> &#123;</span><br><span class="line">    <span class="type">double</span> <span class="variable">res</span> <span class="operator">=</span> (x + s / x) / <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">if</span> (res == x) &#123;</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> sqrts(res); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>牛顿迭代解题思路引用：</p>
-<p>作者：<a href="https://leetcode.cn/u/loafer/">LOAFER</a><br>链接：<a href="https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/">https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/</a></p>
-]]></content>
-      <tags>
-        <tag>牛顿迭代法</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>aa</title>
-    <url>/2023/07/07/aa/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>数组中数字出现的次数-异或</title>
-    <url>/2023/06/08/%E6%95%B0%E7%BB%84%E4%B8%AD%E6%95%B0%E5%AD%97%E5%87%BA%E7%8E%B0%E7%9A%84%E6%AC%A1%E6%95%B0-%E5%BC%82%E6%88%96/</url>
-    <content><![CDATA[<h4 id="剑指-Offer-56-I-数组中数字出现的次数"><a href="#剑指-Offer-56-I-数组中数字出现的次数" class="headerlink" title="剑指 Offer 56 - I. 数组中数字出现的次数"></a><a href="https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/">剑指 Offer 56 - I. 数组中数字出现的次数</a></h4><p>一个整型数组 <code>nums</code> 里除两个数字之外，其他数字都出现了两次。请写程序找出这两个只出现一次的数字。要求时间复杂度是O(n)，空间复杂度是O(1)。</p>
-<span id="more"></span>
-<p>题目要求时间复杂度 <em>O</em>(<em>N</em>) ，空间复杂度<em>O</em>(1) ，因此排除 <strong>暴力法</strong> 和 <strong>哈希表统计法</strong> 。</p>
-<p><strong>1.</strong>异或运算有个重要的性质，两个相同数字异或为 0，即对于任意整数 <em>a</em> 有<em>a</em>⊕<em>a</em>=0 。异或运算满足交换律 <em>a</em>⊕<em>b</em>=<em>b</em>⊕<em>a</em>。因此，若将 <em>nums</em>中所有数字执行异或运算，留下的结果则为 <strong>出现一次的数字 </strong>x和y。</p>
-<p><strong>2.</strong>由于<em>x≠y</em> ，则 <em>x</em> 和<em>y</em> 二进制至少有一位不同（即分别为 0 和 1 ）,根据此位可以将<em>nums</em>拆分为分别包含 <em>x</em> 和 <em>y</em> 的两个子数组。</p>
-<p>若整数<em>x⊕y</em>某二进制位为 1,则x,y的此二进制位一定不同。换言之，找到<em>x⊕y</em>某为1的二进制位，即可将数组<em>nums</em>拆分为上述的两个子数组。</p>
-<ul>
-<li>若a&amp;0001=1,则a的第一位为1；</li>
-<li>若a&amp;0010=1,则a的第二位为1；</li>
-<li>。。。。。</li>
-</ul>
-<p>初始化一个辅助变量<em>m=1</em> ，通过与运算从右向左循环判断，可 获取整数<em>x⊕y</em> 首位1。</p>
-<p> <strong>3.</strong>遍历判断<em>nums</em>中各数字和<em>m</em> 做与运算的结果，可将数组拆分为两个子数组，并分别对两个子数组遍历求异或，则可得到两个只出现一次的数字。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] singleNumbers(<span class="type">int</span>[] nums) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">x</span> <span class="operator">=</span> <span class="number">0</span>, y = <span class="number">0</span>, m = <span class="number">1</span>, n = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">/*遍历异或</span></span><br><span class="line"><span class="comment">    a⊕b⊕c⊕d⊕d⊕f....x⊕t⊕y⊕a = (a⊕a)⊕(b⊕b)⊕(c⊕c)⊕....⊕x⊕y = x⊕y</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> num : nums) &#123;</span><br><span class="line">        n ^= num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    若x⊕y = 6⊕4 = 0110 ⊕ 0100 = 0010 第二位为1</span></span><br><span class="line"><span class="comment">    m = 1</span></span><br><span class="line"><span class="comment">    0010 &amp; 0001 = 0</span></span><br><span class="line"><span class="comment">    m &lt;&lt; 1  m = 10</span></span><br><span class="line"><span class="comment">    0010 &amp; 0010 = 10</span></span><br><span class="line"><span class="comment">    此时m = 10</span></span><br><span class="line"><span class="comment">    m &amp; x = 0010 &amp; 0110 = 0010 </span></span><br><span class="line"><span class="comment">    m &amp; y = 0010 &amp; 0100 = 0000</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">while</span> ((n &amp; m) == <span class="number">0</span>) &#123;</span><br><span class="line">        m &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    遍历数据，将每个数和m进行与操作 结果为0的一组，不为0的一组</span></span><br><span class="line"><span class="comment">    若a⊕m = 0, b⊕m = 0; c⊕m != 0, d⊕m != 0. x⊕m != 0, y⊕m = 0</span></span><br><span class="line"><span class="comment">    结果分为两组：</span></span><br><span class="line"><span class="comment">    1.num &amp; m = 0  (y⊕a⊕b⊕a⊕b) = y</span></span><br><span class="line"><span class="comment">    2.num &amp; m != 0  (x⊕c⊕d⊕d⊕c) = x</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> num : nums) &#123;</span><br><span class="line">        <span class="keyword">if</span> ((num &amp; m) != <span class="number">0</span>) x ^= num;</span><br><span class="line">        <span class="keyword">else</span> y ^= num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">int</span>[]&#123;x, y&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>解题引用：</p>
-<p>作者：<a href="https://leetcode.cn/u/jyd/">Krahets</a><br>链接：<a href="https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/solution/jian-zhi-offer-56-i-shu-zu-zhong-shu-zi-tykom/">https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/solution/jian-zhi-offer-56-i-shu-zu-zhong-shu-zi-tykom/</a></p>
-]]></content>
-      <tags>
-        <tag>位运算</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>前缀和</title>
-    <url>/2023/06/02/%E5%89%8D%E7%BC%80%E5%92%8C/</url>
-    <content><![CDATA[<p>leetcode  <a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/">2559. 统计范围内的元音字符串数</a></p>
-<span id="more"></span>
-<p>给你一个下标从 <strong>0</strong> 开始的字符串数组 <code>words</code> 以及一个二维整数数组 <strong>queries</strong>。</p>
-<p>每个查询queries[i] = [$l_i$, $r_i$]会要求我们统计在<strong>words</strong>中下标$l_i$到$r_i$范围内（包含两个值）并且以元音开头和结尾的字符串的数目。</p>
-<p>返回一个整数数组，其中数组的第 <code>i</code> 个元素对应第 <code>i</code> 个查询的答案。</p>
-<p><strong>注意：</strong>元音字母是 <code>&#39;a&#39;</code>、<code>&#39;e&#39;</code>、<code>&#39;i&#39;</code>、<code>&#39;o&#39;</code> 和 <code>&#39;u&#39;</code> 。</p>
-<p><strong>暴力解法</strong></p>
-<p>queries数组范围内，判断words数组是否是以元音字母开头结尾的。结果超时。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] vowelStrings(String[] words, <span class="type">int</span>[][] queries) &#123;</span><br><span class="line">    <span class="type">int</span>[] res = <span class="keyword">new</span> <span class="title class_">int</span>[queries.length];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; queries.length; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">num</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> queries[i][<span class="number">0</span>]; j &lt;= queries[i][<span class="number">1</span>]; j++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (isVowel(words[j])) num++;</span><br><span class="line">        &#125;</span><br><span class="line">        res[i] = num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">boolean</span> <span class="title function_">isVowel</span><span class="params">(String word)</span> &#123;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">flag1</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">flag2</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="type">char</span>[] chars = &#123;<span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;i&#x27;</span>, <span class="string">&#x27;o&#x27;</span>, <span class="string">&#x27;u&#x27;</span>&#125;;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">char</span> ch : chars) &#123;</span><br><span class="line">        <span class="keyword">if</span> (ch == word.charAt(<span class="number">0</span>)) flag1 = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">if</span> (ch == word.charAt(word.length() - <span class="number">1</span>)) flag2 = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> flag1 &amp;&amp; flag2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><strong>前缀和</strong></p>
-<p>用 <em>n</em> 表示数组<em>words</em> 的长度，创建长度为<em>n+1</em> 的数组 <em>prefixSums</em>，其中 <em>prefixSums[i]</em> 表示数组<em>words</em> 的前 <em>i</em> 个字符串（即下标范围 <em>[0,i−1]</em>的字符串）中的元音字符串数,<em>prefixSums[0]=0</em>。</p>
-<p>从左到右遍历数组<em>words</em>，对于下标 <em>0≤i&lt;n</em>，执行如下操作：</p>
-<ul>
-<li>如果<em>words[i]</em>是元音字符串，则<em>prefixSums[i + 1]</em> = <em>prefixSums[i]</em> + 1;</li>
-<li>如果<em>words[i]</em>不是元音字符串，则<em>prefixSums[i + 1]</em> = <em>prefixSums[i]</em>;</li>
-</ul>
-<p>得到前缀和数组之后，对于<em>0≤</em>i<em>≤</em>j<em>&lt;n</em>，区间[i,j]中的元音字符串数是<em>prefixSums[j + 1]</em>  - <em>prefixSums[i]</em> 。</p>
-<p>用<em>ans[i]</em>表示第i个查询<em>queries[i]</em>的答案。<em>queries[i]=[$start_i$, $end_i$]</em>,则<em>ans[i]=prefixSums[$end_i$ + 1] - prefixSums[$start_i$]</em>。</p>
-<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] vowelStrings(String[] words, <span class="type">int</span>[][] queries) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">n</span> <span class="operator">=</span> words.length;</span><br><span class="line">    <span class="type">int</span>[] prefixSums = <span class="keyword">new</span> <span class="title class_">int</span>[n + <span class="number">1</span>];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">val</span> <span class="operator">=</span> isVowel(words[i].charAt(<span class="number">0</span>)) &amp;&amp; isVowel(words[i].charAt(words[i].length() - <span class="number">1</span>)) ? <span class="number">1</span> : <span class="number">0</span>;</span><br><span class="line">        prefixSums[i + <span class="number">1</span>] = prefixSums[i] + val;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span>[] res = <span class="keyword">new</span> <span class="title class_">int</span>[queries.length];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; res.length; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">start</span> <span class="operator">=</span> queries[i][<span class="number">0</span>], end = queries[i][<span class="number">1</span>];</span><br><span class="line">        res[i] = prefixSums[end + <span class="number">1</span>] - prefixSums[start];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">boolean</span> <span class="title function_">isVowel</span><span class="params">(<span class="type">char</span> ch)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> ch == <span class="string">&#x27;a&#x27;</span> || ch == <span class="string">&#x27;e&#x27;</span> || ch == <span class="string">&#x27;i&#x27;</span> || ch == <span class="string">&#x27;o&#x27;</span> || ch == <span class="string">&#x27;u&#x27;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>前缀和解法引用：</p>
-<p>作者：LeetCode-Solution<br>链接：<a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/solution/tong-ji-fan-wei-nei-de-yuan-yin-zi-fu-ch-5k8q/">https://leetcode.cn/problems/count-vowel-strings-in-ranges/solution/tong-ji-fan-wei-nei-de-yuan-yin-zi-fu-ch-5k8q/</a><br>来源：力扣（LeetCode）</p>
-]]></content>
-      <tags>
-        <tag>前缀和</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>Redis数据结构</title>
     <url>/2023/05/31/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
     <content><![CDATA[<h1 id="1-动态字符串SDS"><a href="#1-动态字符串SDS" class="headerlink" title="1.动态字符串SDS"></a>1.动态字符串SDS</h1><p>​        Redis中保存的Key是字符串，value往往是字符串或者字符串的集合。不过Redis没有直接使用C语言中的字符串，因为C语言字符串存在很多问题：</p>
@@ -415,6 +333,83 @@ y = f(x)=x^2 -C</script><p><em>C</em> 的平方根就是函数的零点。</p>
 ]]></content>
       <tags>
         <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>x的平方根</title>
+    <url>/2023/05/29/x%E7%9A%84%E5%B9%B3%E6%96%B9%E6%A0%B9/</url>
+    <content><![CDATA[<p>leetcode 69题：x的平方根</p>
+<span id="more"></span>
+<p>题目：给你一个非负整数 <code>x</code> ，计算并返回 <code>x</code> 的 <strong>算术平方根</strong>。由于返回类型是整数，结果只保留 <strong>整数部分</strong> ，小数部分将被 舍去 。<strong>注意：</strong>不允许使用任何内置指数函数和算符，例如 <code>pow(x, 0.5)</code> 或者 <code>x ** 0.5</code> </p>
+<h1 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h1><p>代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="variable">left</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span> <span class="variable">right</span> <span class="operator">=</span> x;</span><br><span class="line"><span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">mid</span> <span class="operator">=</span> (right - left) &gt;&gt; <span class="number">1</span> + left;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">long</span>) mid * mid &gt; x) &#123;</span><br><span class="line">        right = mid;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        left = mid;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> left;</span><br></pre></td></tr></table></figure>
+<p>使用二分法结果正确，但是超出时间限制。</p>
+<h1 id="牛顿迭代法"><a href="#牛顿迭代法" class="headerlink" title="牛顿迭代法"></a>牛顿迭代法</h1><p><a href="https://leetcode.cn/link/?target=https://baike.baidu.com/item/牛顿迭代法">牛顿迭代法</a>是一种可以用来快速求解函数零点的方法。</p>
+<script type="math/tex; mode=display">
+y = f(x)=x^2 -C</script><p><em>C</em> 的平方根就是函数的零点。</p>
+<p>牛顿迭代法的本质是借助泰勒级数，从初始值开始快速向零点逼近。我们任取一个 $x_0$作为初始值，在每一步的迭代中，我们找到函数图像上的点 $(x_i, f(x_i))$,过该点作一条斜率为该点导数$f(x_i)$的直线，与横轴的交点记为$x_{i+1}$。$x_{i+1}$相较于而言$x_i$距离零点更近。在经过多次迭代后，我们就可以得到一个距离零点非常接近的交点。下图给出了从$x_0$开始迭代两次，得到$x_1$ 和$x_2$的过程。</p>
+<p><img src="/images/牛顿迭代.png" alt="牛顿迭代"></p>
+<p>根号<em>C</em>就是$x^2-C=0$的一个正实根，这个函数的导数是<em>2x</em>。函数上任一点 $(x_i, f(x_i))$处的切线斜率是2x。$x-f(x)/(2x)$就是一个比<em>x</em> 更接近的近似值。代入$f(x)=x^2 -C $得到$x-(x^2-a)/(2x)$,也就是$(x+C/x)/2$。</p>
+<p>代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> s;</span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">mySqrt</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    s = x;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">0</span>) <span class="keyword">return</span> x;</span><br><span class="line">    <span class="keyword">return</span> ((<span class="type">int</span>) (sqrts(x)));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">double</span> <span class="title function_">sqrts</span><span class="params">(<span class="type">double</span> x)</span> &#123;</span><br><span class="line">    <span class="type">double</span> <span class="variable">res</span> <span class="operator">=</span> (x + s / x) / <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">if</span> (res == x) &#123;</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> sqrts(res); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>牛顿迭代解题思路引用：</p>
+<p>作者：<a href="https://leetcode.cn/u/loafer/">LOAFER</a><br>链接：<a href="https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/">https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/</a></p>
+]]></content>
+      <tags>
+        <tag>牛顿迭代法</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前缀和</title>
+    <url>/2023/06/02/%E5%89%8D%E7%BC%80%E5%92%8C/</url>
+    <content><![CDATA[<p>leetcode  <a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/">2559. 统计范围内的元音字符串数</a></p>
+<span id="more"></span>
+<p>给你一个下标从 <strong>0</strong> 开始的字符串数组 <code>words</code> 以及一个二维整数数组 <strong>queries</strong>。</p>
+<p>每个查询queries[i] = [$l_i$, $r_i$]会要求我们统计在<strong>words</strong>中下标$l_i$到$r_i$范围内（包含两个值）并且以元音开头和结尾的字符串的数目。</p>
+<p>返回一个整数数组，其中数组的第 <code>i</code> 个元素对应第 <code>i</code> 个查询的答案。</p>
+<p><strong>注意：</strong>元音字母是 <code>&#39;a&#39;</code>、<code>&#39;e&#39;</code>、<code>&#39;i&#39;</code>、<code>&#39;o&#39;</code> 和 <code>&#39;u&#39;</code> 。</p>
+<p><strong>暴力解法</strong></p>
+<p>queries数组范围内，判断words数组是否是以元音字母开头结尾的。结果超时。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] vowelStrings(String[] words, <span class="type">int</span>[][] queries) &#123;</span><br><span class="line">    <span class="type">int</span>[] res = <span class="keyword">new</span> <span class="title class_">int</span>[queries.length];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; queries.length; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">num</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> queries[i][<span class="number">0</span>]; j &lt;= queries[i][<span class="number">1</span>]; j++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (isVowel(words[j])) num++;</span><br><span class="line">        &#125;</span><br><span class="line">        res[i] = num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">boolean</span> <span class="title function_">isVowel</span><span class="params">(String word)</span> &#123;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">flag1</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">flag2</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="type">char</span>[] chars = &#123;<span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;i&#x27;</span>, <span class="string">&#x27;o&#x27;</span>, <span class="string">&#x27;u&#x27;</span>&#125;;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">char</span> ch : chars) &#123;</span><br><span class="line">        <span class="keyword">if</span> (ch == word.charAt(<span class="number">0</span>)) flag1 = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">if</span> (ch == word.charAt(word.length() - <span class="number">1</span>)) flag2 = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> flag1 &amp;&amp; flag2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>前缀和</strong></p>
+<p>用 <em>n</em> 表示数组<em>words</em> 的长度，创建长度为<em>n+1</em> 的数组 <em>prefixSums</em>，其中 <em>prefixSums[i]</em> 表示数组<em>words</em> 的前 <em>i</em> 个字符串（即下标范围 <em>[0,i−1]</em>的字符串）中的元音字符串数,<em>prefixSums[0]=0</em>。</p>
+<p>从左到右遍历数组<em>words</em>，对于下标 <em>0≤i&lt;n</em>，执行如下操作：</p>
+<ul>
+<li>如果<em>words[i]</em>是元音字符串，则<em>prefixSums[i + 1]</em> = <em>prefixSums[i]</em> + 1;</li>
+<li>如果<em>words[i]</em>不是元音字符串，则<em>prefixSums[i + 1]</em> = <em>prefixSums[i]</em>;</li>
+</ul>
+<p>得到前缀和数组之后，对于<em>0≤</em>i<em>≤</em>j<em>&lt;n</em>，区间[i,j]中的元音字符串数是<em>prefixSums[j + 1]</em>  - <em>prefixSums[i]</em> 。</p>
+<p>用<em>ans[i]</em>表示第i个查询<em>queries[i]</em>的答案。<em>queries[i]=[$start_i$, $end_i$]</em>,则<em>ans[i]=prefixSums[$end_i$ + 1] - prefixSums[$start_i$]</em>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] vowelStrings(String[] words, <span class="type">int</span>[][] queries) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">n</span> <span class="operator">=</span> words.length;</span><br><span class="line">    <span class="type">int</span>[] prefixSums = <span class="keyword">new</span> <span class="title class_">int</span>[n + <span class="number">1</span>];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">val</span> <span class="operator">=</span> isVowel(words[i].charAt(<span class="number">0</span>)) &amp;&amp; isVowel(words[i].charAt(words[i].length() - <span class="number">1</span>)) ? <span class="number">1</span> : <span class="number">0</span>;</span><br><span class="line">        prefixSums[i + <span class="number">1</span>] = prefixSums[i] + val;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span>[] res = <span class="keyword">new</span> <span class="title class_">int</span>[queries.length];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; res.length; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">start</span> <span class="operator">=</span> queries[i][<span class="number">0</span>], end = queries[i][<span class="number">1</span>];</span><br><span class="line">        res[i] = prefixSums[end + <span class="number">1</span>] - prefixSums[start];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">boolean</span> <span class="title function_">isVowel</span><span class="params">(<span class="type">char</span> ch)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> ch == <span class="string">&#x27;a&#x27;</span> || ch == <span class="string">&#x27;e&#x27;</span> || ch == <span class="string">&#x27;i&#x27;</span> || ch == <span class="string">&#x27;o&#x27;</span> || ch == <span class="string">&#x27;u&#x27;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>前缀和解法引用：</p>
+<p>作者：LeetCode-Solution<br>链接：<a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/solution/tong-ji-fan-wei-nei-de-yuan-yin-zi-fu-ch-5k8q/">https://leetcode.cn/problems/count-vowel-strings-in-ranges/solution/tong-ji-fan-wei-nei-de-yuan-yin-zi-fu-ch-5k8q/</a><br>来源：力扣（LeetCode）</p>
+]]></content>
+      <tags>
+        <tag>前缀和</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>数组中数字出现的次数-异或</title>
+    <url>/2023/06/08/%E6%95%B0%E7%BB%84%E4%B8%AD%E6%95%B0%E5%AD%97%E5%87%BA%E7%8E%B0%E7%9A%84%E6%AC%A1%E6%95%B0-%E5%BC%82%E6%88%96/</url>
+    <content><![CDATA[<h4 id="剑指-Offer-56-I-数组中数字出现的次数"><a href="#剑指-Offer-56-I-数组中数字出现的次数" class="headerlink" title="剑指 Offer 56 - I. 数组中数字出现的次数"></a><a href="https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/">剑指 Offer 56 - I. 数组中数字出现的次数</a></h4><p>一个整型数组 <code>nums</code> 里除两个数字之外，其他数字都出现了两次。请写程序找出这两个只出现一次的数字。要求时间复杂度是O(n)，空间复杂度是O(1)。</p>
+<span id="more"></span>
+<p>题目要求时间复杂度 <em>O</em>(<em>N</em>) ，空间复杂度<em>O</em>(1) ，因此排除 <strong>暴力法</strong> 和 <strong>哈希表统计法</strong> 。</p>
+<p><strong>1.</strong>异或运算有个重要的性质，两个相同数字异或为 0，即对于任意整数 <em>a</em> 有<em>a</em>⊕<em>a</em>=0 。异或运算满足交换律 <em>a</em>⊕<em>b</em>=<em>b</em>⊕<em>a</em>。因此，若将 <em>nums</em>中所有数字执行异或运算，留下的结果则为 <strong>出现一次的数字 </strong>x和y。</p>
+<p><strong>2.</strong>由于<em>x≠y</em> ，则 <em>x</em> 和<em>y</em> 二进制至少有一位不同（即分别为 0 和 1 ）,根据此位可以将<em>nums</em>拆分为分别包含 <em>x</em> 和 <em>y</em> 的两个子数组。</p>
+<p>若整数<em>x⊕y</em>某二进制位为 1,则x,y的此二进制位一定不同。换言之，找到<em>x⊕y</em>某为1的二进制位，即可将数组<em>nums</em>拆分为上述的两个子数组。</p>
+<ul>
+<li>若a&amp;0001=1,则a的第一位为1；</li>
+<li>若a&amp;0010=1,则a的第二位为1；</li>
+<li>。。。。。</li>
+</ul>
+<p>初始化一个辅助变量<em>m=1</em> ，通过与运算从右向左循环判断，可 获取整数<em>x⊕y</em> 首位1。</p>
+<p> <strong>3.</strong>遍历判断<em>nums</em>中各数字和<em>m</em> 做与运算的结果，可将数组拆分为两个子数组，并分别对两个子数组遍历求异或，则可得到两个只出现一次的数字。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] singleNumbers(<span class="type">int</span>[] nums) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">x</span> <span class="operator">=</span> <span class="number">0</span>, y = <span class="number">0</span>, m = <span class="number">1</span>, n = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">/*遍历异或</span></span><br><span class="line"><span class="comment">    a⊕b⊕c⊕d⊕d⊕f....x⊕t⊕y⊕a = (a⊕a)⊕(b⊕b)⊕(c⊕c)⊕....⊕x⊕y = x⊕y</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> num : nums) &#123;</span><br><span class="line">        n ^= num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    若x⊕y = 6⊕4 = 0110 ⊕ 0100 = 0010 第二位为1</span></span><br><span class="line"><span class="comment">    m = 1</span></span><br><span class="line"><span class="comment">    0010 &amp; 0001 = 0</span></span><br><span class="line"><span class="comment">    m &lt;&lt; 1  m = 10</span></span><br><span class="line"><span class="comment">    0010 &amp; 0010 = 10</span></span><br><span class="line"><span class="comment">    此时m = 10</span></span><br><span class="line"><span class="comment">    m &amp; x = 0010 &amp; 0110 = 0010 </span></span><br><span class="line"><span class="comment">    m &amp; y = 0010 &amp; 0100 = 0000</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">while</span> ((n &amp; m) == <span class="number">0</span>) &#123;</span><br><span class="line">        m &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    遍历数据，将每个数和m进行与操作 结果为0的一组，不为0的一组</span></span><br><span class="line"><span class="comment">    若a⊕m = 0, b⊕m = 0; c⊕m != 0, d⊕m != 0. x⊕m != 0, y⊕m = 0</span></span><br><span class="line"><span class="comment">    结果分为两组：</span></span><br><span class="line"><span class="comment">    1.num &amp; m = 0  (y⊕a⊕b⊕a⊕b) = y</span></span><br><span class="line"><span class="comment">    2.num &amp; m != 0  (x⊕c⊕d⊕d⊕c) = x</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> num : nums) &#123;</span><br><span class="line">        <span class="keyword">if</span> ((num &amp; m) != <span class="number">0</span>) x ^= num;</span><br><span class="line">        <span class="keyword">else</span> y ^= num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">int</span>[]&#123;x, y&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>解题引用：</p>
+<p>作者：<a href="https://leetcode.cn/u/jyd/">Krahets</a><br>链接：<a href="https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/solution/jian-zhi-offer-56-i-shu-zu-zhong-shu-zi-tykom/">https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/solution/jian-zhi-offer-56-i-shu-zu-zhong-shu-zi-tykom/</a></p>
+]]></content>
+      <tags>
+        <tag>位运算</tag>
       </tags>
   </entry>
 </search>
