@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>Redis数据结构</title>
+    <url>/2023/05/31/Redis%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/</url>
+    <content><![CDATA[<h1 id="1-动态字符串SDS"><a href="#1-动态字符串SDS" class="headerlink" title="1.动态字符串SDS"></a>1.动态字符串SDS</h1><p>​        Redis中保存的Key是字符串，value往往是字符串或者字符串的集合。不过Redis没有直接使用C语言中的字符串，因为C语言字符串存在很多问题：</p>
+<ul>
+<li><strong>获取字符串长度的需要通过运算</strong></li>
+</ul>
+<p>​        在 C 语言中，字符串并不记录自身的长度信息，所以为了获取一个 C 字符串的长度，程序必须遍历整个字符串，对遇到的每个字符串进行计数，直到遇到代表字符串结尾的空字符串为止，整个时间复杂度为<em>O(n)</em>。</p>
+<p>​        Redis 定义了一个<em>len</em>属性，专门用于存储字符串的长度，获取字符串的长度操作的时间复杂度为<em>O(n)</em>。</p>
+<ul>
+<li><strong>二进制安全问题</strong></li>
+</ul>
+<p>​        在 C 语言中，字符串实际上是使用字符”<em>\0</em>“终止的一维字符数组。所以在 C 语言获取一个字符串长度，会逐个字符遍历，直到遇到代表字符串结尾的空字符为止。这就会导致<strong>二进制安全</strong>问题。</p>
+<p>​        二进制安全：C 语言中，用”<em>/0</em>“表示字符串的结束，如果字符串本身就有 “\0” 字符，字符串就会被截断，即非二进制安全；若通过某种机制，保证读写字符串时不损害其内容，则是二进制安全。</p>
+<p>​        在SDS中，使用<em>len</em>属性而不是空字符串来判断字符串是否结束。</p>
+<ul>
+<li><strong>缓存区溢出问题</strong></li>
+</ul>
+<p>​        缓存区溢出通常指向缓存区写入了超过缓存区所能保存的最大数据量的数据。</p>
+<p>​        比如使用char <em>strcat(char </em>dest, const char *src);函数来将 src 字符串中的内容拼接到 dest 字符串的末尾。</p>
+<p>​        因为 C 字符串不记录自身的长度，所以 strcat 会假定用户在执行这个函数时，已经为 dest 分配足够多的内存了，可以容纳 src 字符串中的所有内容，而一旦这个假设不成立，就会产生缓存区溢出。</p>
+<ul>
+<li><strong>字符串修改</strong></li>
+</ul>
+<p>​        每次增长或者缩短一个 C 字符串， 程序都总要对保存这个 C 字符串的数组进行一次内存重分配操作：</p>
+<p>​        <strong>增长操作：</strong>比如拼接操作（append），执行增长操作之前需要先进行内存重分配，以扩展底层数组的空间大小，如果忘了就会导致缓冲区溢出。</p>
+<p>​        <strong>缩短操作：</strong>比如截断操作（trim），执行缩短操作之后需要进行内存重分配，来释放掉字符串不再使用的那部分空间，如果忘了就会导致内存泄漏。</p>
+<p>​        然而内存重分配其实涉及复杂的算法，并且可能需要执行系统调用，所以它通常是一个比较耗时的操作。</p>
+<p>​        对于追求速度、效率的 Redis 来说，使用 char 来存储字符串并不是一个好的选择，因此Redis构建了一种新的字符串结构，称为简单动态字符串（Simple Dynamic String），简称SDS。</p>
+<p><strong>SDS结构体</strong></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/* Note: sdshdr5 is never used, we just access the flags byte directly.</span></span><br><span class="line"><span class="comment"> * However is here to document the layout of type 5 SDS strings. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> __<span class="title">attribute__</span> ((__<span class="title">packed__</span>)) <span class="title">sdshdr5</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags; <span class="comment">/* 3 lsb of type, and 5 msb of string length */</span></span><br><span class="line">    <span class="type">char</span> buf[];</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> __<span class="title">attribute__</span> ((__<span class="title">packed__</span>)) <span class="title">sdshdr8</span> &#123;</span></span><br><span class="line">    <span class="type">uint8_t</span> len; <span class="comment">/* used */</span></span><br><span class="line">    <span class="type">uint8_t</span> alloc; <span class="comment">/* excluding the header and null terminator */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags; <span class="comment">/* 3 lsb of type, 5 unused bits */</span></span><br><span class="line">    <span class="type">char</span> buf[];</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> __<span class="title">attribute__</span> ((__<span class="title">packed__</span>)) <span class="title">sdshdr16</span> &#123;</span></span><br><span class="line">    <span class="type">uint16_t</span> len; <span class="comment">/* used */</span></span><br><span class="line">    <span class="type">uint16_t</span> alloc; <span class="comment">/* excluding the header and null terminator */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags; <span class="comment">/* 3 lsb of type, 5 unused bits */</span></span><br><span class="line">    <span class="type">char</span> buf[];</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> __<span class="title">attribute__</span> ((__<span class="title">packed__</span>)) <span class="title">sdshdr32</span> &#123;</span></span><br><span class="line">    <span class="type">uint32_t</span> len; <span class="comment">/* used */</span></span><br><span class="line">    <span class="type">uint32_t</span> alloc; <span class="comment">/* excluding the header and null terminator */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags; <span class="comment">/* 3 lsb of type, 5 unused bits */</span></span><br><span class="line">    <span class="type">char</span> buf[];</span><br><span class="line">&#125;;</span><br><span class="line"><span class="class"><span class="keyword">struct</span> __<span class="title">attribute__</span> ((__<span class="title">packed__</span>)) <span class="title">sdshdr64</span> &#123;</span></span><br><span class="line">    <span class="type">uint64_t</span> len; <span class="comment">/* used */</span></span><br><span class="line">    <span class="type">uint64_t</span> alloc; <span class="comment">/* excluding the header and null terminator */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> flags; <span class="comment">/* 3 lsb of type, 5 unused bits */</span></span><br><span class="line">    <span class="type">char</span> buf[];</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>​        <strong>len：</strong>buf保存的字符串字节数，不包含结束标识</p>
+<p>​        <strong>alloc：</strong>buf申请的总的字节数，不包含结束标识</p>
+<p>​        <strong>flags：</strong>不同SDS头的类型，用来控制SDS的头大小,包括5中类型</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> SDS_TYPE_5  0</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SDS_TYPE_8  1</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SDS_TYPE_16 2</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SDS_TYPE_32 3</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> SDS_TYPE_64 4</span></span><br></pre></td></tr></table></figure>
+<p>​        一个包含字符串“hi”的sds结构如下：</p>
+<p><img src="/images/sds.png" alt="sds结构"></p>
+<p>​        假如给SDS追加一段字符串“,ab”，这里首先会申请新内存空间：</p>
+<p>​        如果新字符串小于1M，则新空间为扩展后字符串长度的两倍+1；</p>
+<p>​        如果新字符串大于1M，则新空间为扩展后字符串长度+1M+1。称为内存预分配。</p>
+<p><img src="/images/sds扩展.png" alt="sds扩展"></p>
+<h1 id="2-整数集合intset"><a href="#2-整数集合intset" class="headerlink" title="2.整数集合intset"></a>2.整数集合intset</h1><p>​        intset是Redis中set集合的一种实现方式，基于整数数组来实现，并且具备长度可变、有序等特征。intset是一个由整数组成的有序集合，从而便于在上面进行二分查找，用于快速地判断一个元素是否属于这个集合。它可以保存类型为int16_t、int32_t或者int64_t的整数值，并且保证集合中不会出现重复元素。结构如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">intset</span> &#123;</span></span><br><span class="line">    <span class="type">uint32_t</span> encoding; <span class="comment">//编码方式，存放16位，32位，64位整数</span></span><br><span class="line">    <span class="type">uint32_t</span> length;   <span class="comment">//元素个数</span></span><br><span class="line">    <span class="type">int8_t</span> contents[]; <span class="comment">//整数数组，保存集合数据</span></span><br><span class="line">&#125; intset;</span><br></pre></td></tr></table></figure>
+<ul>
+<li>其中的encoding包含三种模式，表示存储的整数大小不同：</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/* Note that these encodings are ordered, so:</span></span><br><span class="line"><span class="comment"> * INTSET_ENC_INT16 &lt; INTSET_ENC_INT32 &lt; INTSET_ENC_INT64. */</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> INTSET_ENC_INT16 (sizeof(int16_t)) <span class="comment">//2字节整数，类似Java的short</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> INTSET_ENC_INT32 (sizeof(int32_t)) <span class="comment">//4字节整数，类似Java的int</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> INTSET_ENC_INT64 (sizeof(int64_t)) <span class="comment">//8字节整数，类似Java的long</span></span></span><br></pre></td></tr></table></figure>
+<ul>
+<li><p>length属性记录了整数集合包含的元素数量，也即是contents数组的长度。</p>
+</li>
+<li><p>虽然intset结构将contents属性声明为int8_t类型的数组，但实际上contents数组并不保存任何int8_t类型的值，contents数组的真正类型取决于encoding属性的值。</p>
+</li>
+</ul>
+<p>​    <strong>(1)</strong>如果encoding属性的值为INTSET_ENC_INT16，那么contents就是一个int16_t类型的数 组，数组里的每个项都是一个int16_t类型的整数值(最小值为-32768，最大值为32767)。</p>
+<p>​    <strong>(2)</strong>如果encoding属性的值为INTSET_ENC_INT32，那么contents就是一个int32_t类型的数组，数组里的每个项都是一个int32_t类型的整数值(最小值为-2147483648，最大值为2147483647)。</p>
+<p>​    <strong>(3)</strong>如果encoding属性的值为INTSET_ENC_INT64，那么contents就是一个int64_t类型的数组，数组里的每个项都是一个int64_t类型的整数值(最小值为-9223372036854775808，最大值为9223372036854775807)。</p>
+<p><img src="/images/intset_16.png" alt="intset-16"></p>
+<p>数组中每个数字都在int16_t的范围内，因此采用的编码方式是INTSET_ENC_INT16，每部分占用的字节大小为：</p>
+<p>encoding：4字节</p>
+<p>length：4字节</p>
+<p>contents：2字节 * 3  = 6字节</p>
+<p>向其中添加一个数字：50000，这个数字超出了int16_t的范围，intset会自动升级编码方式到合适的大小。</p>
+<p><img src="/images/intset_32.png" alt=""></p>
+<ul>
+<li><p>升级编码为INTSET_ENC_INT32, 每个整数占4字节，并按照新的编码方式及元素个数扩容数组</p>
+</li>
+<li><p>倒序依次将数组中的元素拷贝到扩容后的正确位置</p>
+</li>
+</ul>
+<ul>
+<li>将待添加的元素放入数组末尾</li>
+</ul>
+<ul>
+<li>最后，将inset的encoding属性改为INTSET_ENC_INT32，将length属性改为4</li>
+</ul>
+<p><img src="/images/intset_32-1.png" alt=""></p>
+<p>Intset可以看做是特殊的整数数组，具备一些特点：</p>
+<ul>
+<li>Redis会确保Intset中的元素唯一、有序</li>
+<li>具备类型升级机制，可以节省内存空间</li>
+<li>底层采用二分查找方式来查询</li>
+</ul>
+<h1 id="3-字典Dict"><a href="#3-字典Dict" class="headerlink" title="3.字典Dict"></a>3.字典Dict</h1><p>Redis是一个键值型（Key-Value Pair）的数据库，可以根据键实现快速的增删改查。而键与值的映射关系正是通过Dict来实现的。</p>
+<p>Dict由三部分组成，分别是：哈希表（DictHashTable）、哈希节点（DictEntry）、字典（Dict）。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">dictEntry</span> &#123;</span></span><br><span class="line">    <span class="type">void</span> *key;  <span class="comment">//键</span></span><br><span class="line">    <span class="class"><span class="keyword">union</span> &#123;</span></span><br><span class="line">        <span class="type">void</span> *val;</span><br><span class="line">        <span class="type">uint64_t</span> u64;</span><br><span class="line">        <span class="type">int64_t</span> s64;</span><br><span class="line">        <span class="type">double</span> d;</span><br><span class="line">    &#125; v; <span class="comment">//值</span></span><br><span class="line">    <span class="comment">//下一个Entry的指针</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">dictEntry</span> *<span class="title">next</span>;</span></span><br><span class="line">&#125; dictEntry;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* This is our hash table structure. Every dictionary has two of this as we</span></span><br><span class="line"><span class="comment"> * implement incremental rehashing, for the old to the new table. */</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">dictht</span> &#123;</span></span><br><span class="line">    <span class="comment">//entry数组</span></span><br><span class="line">    <span class="comment">//数组中保存的指向entry的指针</span></span><br><span class="line">    dictEntry **table;</span><br><span class="line">    <span class="comment">//哈希表的大小</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> size;</span><br><span class="line">    <span class="comment">//哈希表大小的掩码，总等于size - 1</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> sizemask;</span><br><span class="line">    <span class="comment">//entry个数</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> used;</span><br><span class="line">&#125; dictht;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">dict</span> &#123;</span></span><br><span class="line">    dictType *type; <span class="comment">// dict类型，内置不同的hash函数</span></span><br><span class="line">    <span class="type">void</span> *privdata; <span class="comment">// 私有数据，做特殊hash运算时用</span></span><br><span class="line">    dictht ht[<span class="number">2</span>];   <span class="comment">// 一个Dict包含两个哈希表，其中一个是当前数据，另一个一般是空，rehash时使用</span></span><br><span class="line">    <span class="type">long</span> rehashidx; <span class="comment">// rehash的进度，-1表示未进行</span></span><br><span class="line">    <span class="type">int16_t</span> pauserehash; <span class="comment">// rehash是否暂停，1暂停，0继续</span></span><br><span class="line">&#125; dict;</span><br></pre></td></tr></table></figure>
+<p>当我们向Dict添加键值对时，Redis首先根据key计算出hash值（h），然后利用 h &amp; sizemask来计算元素应该存储到数组中的哪个索引位置。存储k1=v1，假设k1的哈希值h =1，则1&amp;3 =1，因此k1=v1要存储到数组角标1位置。</p>
+<p><img src="/images/dict存储1.png" alt="dict存储1"></p>
+<p>Dict结构如下：</p>
+<p><img src="/images/dict结构.png" alt="dict结构"></p>
+<h2 id="dict扩容"><a href="#dict扩容" class="headerlink" title="dict扩容"></a>dict扩容</h2><p>Dict中的HashTable就是数组结合单向链表的实现，当集合中元素较多时，必然导致哈希冲突增多，链表过长，则查询效率会大大降低。</p>
+<p>Dict在每次新增键值对时都会检查负载因子（LoadFactor = used/size） ，满足以下两种情况时会触发哈希表扩容：</p>
+<ul>
+<li>哈希表的 LoadFactor &gt;= 1，并且服务器没有执行 BGSAVE 或者 BGREWRITEAOF 等后台进程；</li>
+<li>哈希表的 LoadFactor &gt; 5 ；</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="comment">/* Expand the hash table if needed */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> _dictExpandIfNeeded(dict *d)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">//如果正在rehash，返回ok</span></span><br><span class="line">    <span class="keyword">if</span> (dictIsRehashing(d)) <span class="keyword">return</span> DICT_OK;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//如果哈希表为空，则初始化哈希表为默认大小：4</span></span><br><span class="line">    <span class="keyword">if</span> (d-&gt;ht[<span class="number">0</span>].size == <span class="number">0</span>) <span class="keyword">return</span> dictExpand(d, DICT_HT_INITIAL_SIZE);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//负载因子(used/size)达到1以上，并且当前没有进行bgrewrite等子进程操作</span></span><br><span class="line">    <span class="comment">//或者负载因子超过5，则进行dictExpand扩容</span></span><br><span class="line">    <span class="keyword">if</span> (d-&gt;ht[<span class="number">0</span>].used &gt;= d-&gt;ht[<span class="number">0</span>].size &amp;&amp;</span><br><span class="line">        (dict_can_resize ||</span><br><span class="line">         d-&gt;ht[<span class="number">0</span>].used/d-&gt;ht[<span class="number">0</span>].size &gt; dict_force_resize_ratio) &amp;&amp;</span><br><span class="line">        dictTypeExpandAllowed(d))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//扩容大小为used + 1，底层会对扩容大小进行判断，实际上找的是第一个大于等于used + 1的2^n</span></span><br><span class="line">        <span class="keyword">return</span> dictExpand(d, d-&gt;ht[<span class="number">0</span>].used + <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> DICT_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="dict收缩"><a href="#dict收缩" class="headerlink" title="dict收缩"></a>dict收缩</h2><p>Dict每次删除元素时，会对负载因子检查，当LoadFactor &lt; 0.1时，会做哈希表收缩。</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">if</span> (dictDelete((dict*)o-&gt;ptr, field) == C_OK) &#123;</span><br><span class="line">    deleted = <span class="number">1</span>;</span><br><span class="line">    <span class="comment">//删除成功后，检查是否需要重置Dict大小，如果需要则调用dictResize重置</span></span><br><span class="line">    <span class="comment">/* Always check if the dictionary needs a resize after a delete. */</span></span><br><span class="line">    <span class="keyword">if</span> (htNeedsResize(o-&gt;ptr)) dictResize(o-&gt;ptr);</span><br><span class="line">&#125;</span><br><span class="line">....</span><br><span class="line">    </span><br><span class="line"><span class="type">int</span> <span class="title function_">htNeedsResize</span><span class="params">(dict *dict)</span> &#123;</span><br><span class="line">    <span class="type">long</span> <span class="type">long</span> size, used;</span><br><span class="line">	<span class="comment">//哈希表大小</span></span><br><span class="line">    size = dictSlots(dict);</span><br><span class="line">    <span class="comment">//entry数量</span></span><br><span class="line">    used = dictSize(dict);</span><br><span class="line">    <span class="comment">//size &gt; 4(哈希表初始大小)并且负载因子小于0.1</span></span><br><span class="line">    <span class="keyword">return</span> (size &gt; DICT_HT_INITIAL_SIZE &amp;&amp;</span><br><span class="line">            (used*<span class="number">100</span>/size &lt; HASHTABLE_MIN_FILL));</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">dictResize</span><span class="params">(dict *d)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> minimal;</span><br><span class="line">	<span class="comment">//如果正在做bgsave或bgrewriteof或rehash，返回错误</span></span><br><span class="line">    <span class="keyword">if</span> (!dict_can_resize || dictIsRehashing(d)) <span class="keyword">return</span> DICT_ERR;</span><br><span class="line">    <span class="comment">//获取used，entry个数</span></span><br><span class="line">    minimal = d-&gt;ht[<span class="number">0</span>].used;</span><br><span class="line">    <span class="comment">//如果used小于4，则重置为4</span></span><br><span class="line">    <span class="keyword">if</span> (minimal &lt; DICT_HT_INITIAL_SIZE)</span><br><span class="line">        minimal = DICT_HT_INITIAL_SIZE;</span><br><span class="line">    <span class="comment">//重置大小为minimal，第一个大于等于minimal的2^n</span></span><br><span class="line">    <span class="keyword">return</span> dictExpand(d, minimal);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> _dictExpand(dict *d, <span class="type">unsigned</span> <span class="type">long</span> size, <span class="type">int</span>* malloc_failed)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">if</span> (malloc_failed) *malloc_failed = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//如果当前entry数量超过了申请的size大小，或者正在rehash，报错</span></span><br><span class="line">    <span class="keyword">if</span> (dictIsRehashing(d) || d-&gt;ht[<span class="number">0</span>].used &gt; size)</span><br><span class="line">        <span class="keyword">return</span> DICT_ERR;</span><br><span class="line">	<span class="comment">//声明新的hash table</span></span><br><span class="line">    dictht n; </span><br><span class="line">    <span class="comment">//实际大小，第一个大于等于size的2^n</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> realsize = _dictNextPower(size);</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Rehashing to the same table size is not useful. */</span></span><br><span class="line">    <span class="keyword">if</span> (realsize == d-&gt;ht[<span class="number">0</span>].size) <span class="keyword">return</span> DICT_ERR;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Allocate the new hash table and initialize all pointers to NULL */</span></span><br><span class="line">    <span class="comment">//重置新的hash table大小和掩码</span></span><br><span class="line">    n.size = realsize;</span><br><span class="line">    n.sizemask = realsize<span class="number">-1</span>;</span><br><span class="line">    <span class="keyword">if</span> (malloc_failed) &#123;</span><br><span class="line">        n.table = ztrycalloc(realsize*<span class="keyword">sizeof</span>(dictEntry*));</span><br><span class="line">        *malloc_failed = n.table == <span class="literal">NULL</span>;</span><br><span class="line">        <span class="keyword">if</span> (*malloc_failed)</span><br><span class="line">            <span class="keyword">return</span> DICT_ERR;</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="comment">//分配内存，size * entrySize</span></span><br><span class="line">        n.table = zcalloc(realsize*<span class="keyword">sizeof</span>(dictEntry*));</span><br><span class="line"></span><br><span class="line">    n.used = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Is this the first initialization? If so it&#x27;s not really a rehashing</span></span><br><span class="line"><span class="comment">     * we just set the first hash table so that it can accept keys. */</span></span><br><span class="line">    <span class="comment">//如果时第一次，直接将n赋值给ht[0]</span></span><br><span class="line">    <span class="keyword">if</span> (d-&gt;ht[<span class="number">0</span>].table == <span class="literal">NULL</span>) &#123;</span><br><span class="line">        d-&gt;ht[<span class="number">0</span>] = n;</span><br><span class="line">        <span class="keyword">return</span> DICT_OK;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* Prepare a second hash table for incremental rehashing */</span></span><br><span class="line">    <span class="comment">//否则，需要rehash，需要将rehashidx置为0。每次增，删，改，查都会触发rehash</span></span><br><span class="line">    d-&gt;ht[<span class="number">1</span>] = n;</span><br><span class="line">    d-&gt;rehashidx = <span class="number">0</span>;</span><br><span class="line">    <span class="keyword">return</span> DICT_OK;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Dict的rehash"><a href="#Dict的rehash" class="headerlink" title="Dict的rehash"></a>Dict的rehash</h2><p>不管是扩容还是收缩，必定会创建新的哈希表，导致哈希表的size和sizemask变化，而key的查询与sizemask有关。因此必须对哈希表中的每一个key重新计算索引，插入新的哈希表，这个过程称为rehash。</p>
+<p>Dict的rehash并不是一次性完成的。如果Dict中包含数百万的entry，要在一次rehash完成，极有可能导致主线程阻塞。因此Dict的rehash是分多次、渐进式的完成，因此称为<strong>渐进式rehash</strong>。</p>
+<ul>
+<li>计算新hash表的realeSize，值取决于当前要做的是扩容还是收缩：<ul>
+<li>如果是扩容，则新size为第一个大于等于dict.ht[0].used + 1的$2^n$</li>
+<li>如果是收缩，则新size为第一个大于等于dict.ht[0].used的$2^n$ （不得小于4）</li>
+</ul>
+</li>
+<li>按照新的realeSize申请内存空间，创建dictht，并赋值给dict.ht[1]</li>
+<li>设置dict.rehashidx = 0，标示开始rehash</li>
+<li>每次执行新增、查询、修改、删除操作时，都检查一下dict.rehashidx是否大于-1，如果是则将dict.ht[0].table[rehashidx]的entry链表rehash到dict.ht[1]，并且将rehashidx++。直至dict.ht[0]的所有数据都rehash到dict.ht[1]</li>
+<li>将dict.ht[1]赋值给dict.ht[0]，给dict.ht[1]初始化为空哈希表，释放原来的dict.ht[0]的内存</li>
+<li>将rehashidx赋值为-1，代表rehash结束</li>
+<li>在rehash过程中，新增操作，则直接写入ht[1]，查询、修改和删除则会在dict.ht[0]和dict.ht[1]依次查找并执行。这样可以确保ht[0]的数据只减不增，随着rehash最终为空</li>
+</ul>
+<p><img src="/images/rehash-1.png" alt="rehash-1"></p>
+<p><img src="/images/rehash-2.png" alt="rehash-2"></p>
+<p><img src="/images/rehash-3.png" alt="rehash-3"></p>
+<p><img src="/images/rehash-4.png" alt="rehash-4"></p>
+<p><strong>总结</strong></p>
+<p>Dict的结构：</p>
+<ul>
+<li>类似java的HashTable，底层是数组加链表来解决哈希冲突</li>
+<li>Dict包含两个哈希表，ht[0]平常用，ht[1]用来rehash</li>
+</ul>
+<p>Dict的伸缩：</p>
+<ul>
+<li>当LoadFactor大于5或者LoadFactor大于1并且没有子进程任务时，Dict扩容</li>
+<li>当LoadFactor小于0.1时，Dict收缩</li>
+<li>扩容大小为第一个大于等于used + 1的$2^n$</li>
+<li>收缩大小为第一个大于等于used 的$2^n$</li>
+<li>Dict采用渐进式rehash，每次访问Dict时执行一次rehash</li>
+<li>rehash时ht[0]只减不增，新增操作只在ht[1]执行，其它操作在两个哈希表</li>
+</ul>
+<h1 id="4-ZipList"><a href="#4-ZipList" class="headerlink" title="4.ZipList"></a>4.ZipList</h1><p>ZipList 是一种特殊的“双端链表” ，由一系列特殊编码的连续内存块组成。可以在任意一端进行压入/弹出操作, 并且该操作的时间复杂度为 O(1)。</p>
+<p><img src="/images/ziplist结构.png" alt="ziplist结构"></p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th style="text-align:center">属性</th>
+<th style="text-align:center">类型</th>
+<th style="text-align:center">长度</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">zlbytes</td>
+<td style="text-align:center">uint32_t</td>
+<td style="text-align:center">4字节</td>
+<td>记录整个压缩列表占用的内存字节数。</td>
+</tr>
+<tr>
+<td style="text-align:center">zltail</td>
+<td style="text-align:center">uint32_t</td>
+<td style="text-align:center">4字节</td>
+<td>记录压缩列表表尾节点距离压缩列表的起始地址有多少字节，通过这个偏移量确定表尾节点的地址。</td>
+</tr>
+<tr>
+<td style="text-align:center">zllen</td>
+<td style="text-align:center">uint16_t</td>
+<td style="text-align:center">2字节</td>
+<td>记录了压缩列表包含的节点数量。 最大值为UINT16_MAX （65534），如果超过这个值，此处会记录为65535，但节点的真实数量需要遍历整个压缩列表才能计算得出。</td>
+</tr>
+<tr>
+<td style="text-align:center">entry</td>
+<td style="text-align:center">列表节点</td>
+<td style="text-align:center">不定</td>
+<td>压缩列表包含的各个节点，节点的长度由节点保存的内容决定。</td>
+</tr>
+<tr>
+<td style="text-align:center">zlend</td>
+<td style="text-align:center">uint8_t</td>
+<td style="text-align:center">1字节</td>
+<td>特殊值 0xFF （十进制 255 ），用于标记压缩列表的末端。</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="ZipListEntry"><a href="#ZipListEntry" class="headerlink" title="ZipListEntry"></a>ZipListEntry</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">zlentry</span> &#123;</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> prevrawlensize; <span class="comment">/* Bytes used to encode the previous entry len 前一个entry的prevrawlen字段*/</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> prevrawlen;     <span class="comment">/* Previous entry len. 前一个entry的字节长度*/</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> lensize;        <span class="comment">/* Bytes used to encode this entry type/len.</span></span><br><span class="line"><span class="comment">                                    For example strings have a 1, 2 or 5 bytes</span></span><br><span class="line"><span class="comment">                                    header. Integers always use a single byte. </span></span><br><span class="line"><span class="comment">                                    当前entry的len字段大小*/</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> len;            <span class="comment">/* Bytes used to represent the actual entry.</span></span><br><span class="line"><span class="comment">                                    For strings this is just the string length</span></span><br><span class="line"><span class="comment">                                    while for integers it is 1, 2, 3, 4, 8 or</span></span><br><span class="line"><span class="comment">                                    0 (for 4 bit immediate) depending on the</span></span><br><span class="line"><span class="comment">                                    number range. </span></span><br><span class="line"><span class="comment">                                    当前entry字节长度*/</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">int</span> headersize;     <span class="comment">/* prevrawlensize + lensize. */</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> encoding;      <span class="comment">/* Set to ZIP_STR_* or ZIP_INT_* depending on</span></span><br><span class="line"><span class="comment">                                    the entry encoding. However for 4 bits</span></span><br><span class="line"><span class="comment">                                    immediate integers this can assume a range</span></span><br><span class="line"><span class="comment">                                    of values and must be range-checked. </span></span><br><span class="line"><span class="comment">                                    元素类型编码*/</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">char</span> *p;            <span class="comment">/* Pointer to the very start of the entry, that</span></span><br><span class="line"><span class="comment">                                    is, this points to prev-entry-len field. </span></span><br><span class="line"><span class="comment">                                    指向具体数据内容首地址的指针*/</span></span><br><span class="line">&#125; zlentry;</span><br></pre></td></tr></table></figure>
+<p>ZipList中的entry结构：</p>
+<p><img src="/images/ziplistentry结构.png" alt="ziplistentry结构"></p>
+<ul>
+<li>previous_entry_length：前一节点的长度，占1个或5个字节。<ul>
+<li>如果前一节点的长度小于254字节，则采用1个字节来保存这个长度值</li>
+<li>如果前一节点的长度大于254字节，则采用5个字节来保存这个长度值，第一个字节为0xfe，后四个字节才是真实长度数据</li>
+</ul>
+</li>
+<li>encoding：编码属性，记录content的数据类型（字符串还是整数）以及长度，占用1个、2个或5个字节</li>
+<li>contents：负责保存节点的数据，可以是字符串或整数</li>
+</ul>
+<p>ZipList中所有存储长度的数值均采用小端字节序，即低位字节在前，高位字节在后。例如：数值0x1234，采用小端字节序后实际存储值为：0x3412</p>
+<p><strong>Encoding编码</strong></p>
+<p>ZipListEntry中的encoding编码分为字符串和整数两种：</p>
+<ul>
+<li><strong>字符串</strong>：如果encoding是以“00”、“01”或者“10”开头，则证明content是字符串</li>
+</ul>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th><strong>编码</strong></th>
+<th>编码长度</th>
+<th>字符串大小</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>00xxxxxx</td>
+<td>1 bytes</td>
+<td>&lt;= 63 bytes</td>
+</tr>
+<tr>
+<td>01xxxxxx xxxxxxxx</td>
+<td>2 bytes</td>
+<td>&lt;= 16383 bytes</td>
+</tr>
+<tr>
+<td>10000000 xxxxxxxx xxxxxxxx xxxxxxxx xxxxxxxx</td>
+<td>5 bytes</td>
+<td>&lt;= 4294967295 bytes</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>例如，保存字符串：“ab”和 “bc”</p>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ASCII码</th>
+<th>二进制</th>
+<th>十六进制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a</td>
+<td>97</td>
+<td>0110 0001</td>
+<td>0x61</td>
+</tr>
+<tr>
+<td>b</td>
+<td>98</td>
+<td>0110 0010</td>
+<td>0x62</td>
+</tr>
+<tr>
+<td>c</td>
+<td>99</td>
+<td>0110 0011</td>
+<td>0x63</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><img src="/images/保存ab.png" alt="保存ab"></p>
+<p><img src="/images/ab和bc.png" alt="ab和bc"></p>
+<ul>
+<li><strong>整数</strong>：如果encoding是以“11”开始，则证明content是整数，且encoding固定只占用1个字节</li>
+</ul>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>编码</th>
+<th>编码长度</th>
+<th>整数类型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>11000000</td>
+<td>1</td>
+<td>int16_t（2 bytes）</td>
+</tr>
+<tr>
+<td>11010000</td>
+<td>1</td>
+<td>int32_t（4 bytes）</td>
+</tr>
+<tr>
+<td>11100000</td>
+<td>1</td>
+<td>int64_t（8 bytes）</td>
+</tr>
+<tr>
+<td>11110000</td>
+<td>1</td>
+<td>24位有符整数(3 bytes)</td>
+</tr>
+<tr>
+<td>11111110</td>
+<td>1</td>
+<td>8位有符整数(1 bytes)</td>
+</tr>
+<tr>
+<td>1111xxxx</td>
+<td>1</td>
+<td>直接在xxxx位置保存数值，范围从0001~1101，减1后结果为实际值</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>例如，一个ZipList中包含两个整数值：“2”和“5”</p>
+<p><img src="/images/2和5.png" alt=""></p>
+<p><img src="/images/2和5-2.png" alt=""></p>
+<h2 id="ZipList的连锁更新问题"><a href="#ZipList的连锁更新问题" class="headerlink" title="ZipList的连锁更新问题"></a>ZipList的连锁更新问题</h2><p>ZipList的每个Entry都包含previous_entry_length来记录上一个节点的大小，长度是1个或5个字节：</p>
+<ul>
+<li><p>如果前一节点的长度小于254字节，则采用1个字节来保存这个长度值</p>
+</li>
+<li><p>如果前一节点的长度大于等于254字节，则采用5个字节来保存这个长度值，第一个字节为0xfe，后四个字节才是真实长度数据</p>
+</li>
+</ul>
+<p>假设有N个连续的、长度为250~253字节之间的entry，因此entry的previous_entry_length属性用1个字节即可表示，如图所示：</p>
+<p><img src="/images/ziplist连锁更新1.png" alt="ziplist连锁更新1"></p>
+<p>插入254字节的entry在队首：</p>
+<p><img src="/images/ziplist连锁更新2.png" alt="ziplist连锁更新2"></p>
+<p>ZipList这种特殊情况下产生的连续多次空间扩展操作称之为连锁更新（Cascade Update）。新增、删除都可能导致连锁更新的发生。</p>
+<p><strong>ZipList特性：</strong></p>
+<ul>
+<li>压缩列表的可以看做一种连续内存空间的”双向链表”</li>
+<li>列表的节点之间不是通过指针连接，而是记录上一节点和本节点长度来寻址，内存占用较低</li>
+<li>如果列表数据过多，导致链表过长，可能影响查询性能</li>
+<li>增或删较大数据时有可能发生连续更新问题</li>
+</ul>
+<h1 id="QuickList"><a href="#QuickList" class="headerlink" title="QuickList"></a>QuickList</h1><p>QuickList是一个双端链表，链表中的每个节点都是一个ZipList。</p>
+<p><img src="/images/quicklist-1.png" alt="quicklist-1"></p>
+<p>为了避免QuickList中的每个ZipList中entry过多，Redis提供了一个配置项：list-max-ziplist-size来限制。</p>
+]]></content>
+      <tags>
+        <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>前缀和</title>
+    <url>/2023/06/02/%E5%89%8D%E7%BC%80%E5%92%8C/</url>
+    <content><![CDATA[<p>leetcode  <a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/">2559. 统计范围内的元音字符串数</a></p>
+<span id="more"></span>
+<p>给你一个下标从 <strong>0</strong> 开始的字符串数组 <code>words</code> 以及一个二维整数数组 <strong>queries</strong>。</p>
+<p>每个查询queries[i] = [$l_i$, $r_i$]会要求我们统计在<strong>words</strong>中下标$l_i$到$r_i$范围内（包含两个值）并且以元音开头和结尾的字符串的数目。</p>
+<p>返回一个整数数组，其中数组的第 <code>i</code> 个元素对应第 <code>i</code> 个查询的答案。</p>
+<p><strong>注意：</strong>元音字母是 <code>&#39;a&#39;</code>、<code>&#39;e&#39;</code>、<code>&#39;i&#39;</code>、<code>&#39;o&#39;</code> 和 <code>&#39;u&#39;</code> 。</p>
+<p><strong>暴力解法</strong></p>
+<p>queries数组范围内，判断words数组是否是以元音字母开头结尾的。结果超时。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] vowelStrings(String[] words, <span class="type">int</span>[][] queries) &#123;</span><br><span class="line">    <span class="type">int</span>[] res = <span class="keyword">new</span> <span class="title class_">int</span>[queries.length];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; queries.length; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">num</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">j</span> <span class="operator">=</span> queries[i][<span class="number">0</span>]; j &lt;= queries[i][<span class="number">1</span>]; j++) &#123;</span><br><span class="line">            <span class="keyword">if</span> (isVowel(words[j])) num++;</span><br><span class="line">        &#125;</span><br><span class="line">        res[i] = num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">boolean</span> <span class="title function_">isVowel</span><span class="params">(String word)</span> &#123;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">flag1</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="type">boolean</span> <span class="variable">flag2</span> <span class="operator">=</span> <span class="literal">false</span>;</span><br><span class="line">    <span class="type">char</span>[] chars = &#123;<span class="string">&#x27;a&#x27;</span>, <span class="string">&#x27;e&#x27;</span>, <span class="string">&#x27;i&#x27;</span>, <span class="string">&#x27;o&#x27;</span>, <span class="string">&#x27;u&#x27;</span>&#125;;</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">char</span> ch : chars) &#123;</span><br><span class="line">        <span class="keyword">if</span> (ch == word.charAt(<span class="number">0</span>)) flag1 = <span class="literal">true</span>;</span><br><span class="line">        <span class="keyword">if</span> (ch == word.charAt(word.length() - <span class="number">1</span>)) flag2 = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> flag1 &amp;&amp; flag2;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>前缀和</strong></p>
+<p>用 <em>n</em> 表示数组<em>words</em> 的长度，创建长度为<em>n+1</em> 的数组 <em>prefixSums</em>，其中 <em>prefixSums[i]</em> 表示数组<em>words</em> 的前 <em>i</em> 个字符串（即下标范围 <em>[0,i−1]</em>的字符串）中的元音字符串数,<em>prefixSums[0]=0</em>。</p>
+<p>从左到右遍历数组<em>words</em>，对于下标 <em>0≤i&lt;n</em>，执行如下操作：</p>
+<ul>
+<li>如果<em>words[i]</em>是元音字符串，则<em>prefixSums[i + 1]</em> = <em>prefixSums[i]</em> + 1;</li>
+<li>如果<em>words[i]</em>不是元音字符串，则<em>prefixSums[i + 1]</em> = <em>prefixSums[i]</em>;</li>
+</ul>
+<p>得到前缀和数组之后，对于<em>0≤</em>i<em>≤</em>j<em>&lt;n</em>，区间[i,j]中的元音字符串数是<em>prefixSums[j + 1]</em>  - <em>prefixSums[i]</em> 。</p>
+<p>用<em>ans[i]</em>表示第i个查询<em>queries[i]</em>的答案。<em>queries[i]=[$start_i$, $end_i$]</em>,则<em>ans[i]=prefixSums[$end_i$ + 1] - prefixSums[$start_i$]</em>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] vowelStrings(String[] words, <span class="type">int</span>[][] queries) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">n</span> <span class="operator">=</span> words.length;</span><br><span class="line">    <span class="type">int</span>[] prefixSums = <span class="keyword">new</span> <span class="title class_">int</span>[n + <span class="number">1</span>];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">val</span> <span class="operator">=</span> isVowel(words[i].charAt(<span class="number">0</span>)) &amp;&amp; isVowel(words[i].charAt(words[i].length() - <span class="number">1</span>)) ? <span class="number">1</span> : <span class="number">0</span>;</span><br><span class="line">        prefixSums[i + <span class="number">1</span>] = prefixSums[i] + val;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span>[] res = <span class="keyword">new</span> <span class="title class_">int</span>[queries.length];</span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; res.length; i++) &#123;</span><br><span class="line">        <span class="type">int</span> <span class="variable">start</span> <span class="operator">=</span> queries[i][<span class="number">0</span>], end = queries[i][<span class="number">1</span>];</span><br><span class="line">        res[i] = prefixSums[end + <span class="number">1</span>] - prefixSums[start];</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">boolean</span> <span class="title function_">isVowel</span><span class="params">(<span class="type">char</span> ch)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> ch == <span class="string">&#x27;a&#x27;</span> || ch == <span class="string">&#x27;e&#x27;</span> || ch == <span class="string">&#x27;i&#x27;</span> || ch == <span class="string">&#x27;o&#x27;</span> || ch == <span class="string">&#x27;u&#x27;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>前缀和解法引用：</p>
+<p>作者：LeetCode-Solution<br>链接：<a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/solution/tong-ji-fan-wei-nei-de-yuan-yin-zi-fu-ch-5k8q/">https://leetcode.cn/problems/count-vowel-strings-in-ranges/solution/tong-ji-fan-wei-nei-de-yuan-yin-zi-fu-ch-5k8q/</a><br>来源：力扣（LeetCode）</p>
+]]></content>
+      <tags>
+        <tag>前缀和</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>数组中数字出现的次数-异或</title>
+    <url>/2023/06/08/%E6%95%B0%E7%BB%84%E4%B8%AD%E6%95%B0%E5%AD%97%E5%87%BA%E7%8E%B0%E7%9A%84%E6%AC%A1%E6%95%B0-%E5%BC%82%E6%88%96/</url>
+    <content><![CDATA[<h4 id="剑指-Offer-56-I-数组中数字出现的次数"><a href="#剑指-Offer-56-I-数组中数字出现的次数" class="headerlink" title="剑指 Offer 56 - I. 数组中数字出现的次数"></a><a href="https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/">剑指 Offer 56 - I. 数组中数字出现的次数</a></h4><p>一个整型数组 <code>nums</code> 里除两个数字之外，其他数字都出现了两次。请写程序找出这两个只出现一次的数字。要求时间复杂度是O(n)，空间复杂度是O(1)。</p>
+<span id="more"></span>
+<p>题目要求时间复杂度 <em>O</em>(<em>N</em>) ，空间复杂度<em>O</em>(1) ，因此排除 <strong>暴力法</strong> 和 <strong>哈希表统计法</strong> 。</p>
+<p><strong>1.</strong>异或运算有个重要的性质，两个相同数字异或为 0，即对于任意整数 <em>a</em> 有<em>a</em>⊕<em>a</em>=0 。异或运算满足交换律 <em>a</em>⊕<em>b</em>=<em>b</em>⊕<em>a</em>。因此，若将 <em>nums</em>中所有数字执行异或运算，留下的结果则为 <strong>出现一次的数字 </strong>x和y。</p>
+<p><strong>2.</strong>由于<em>x≠y</em> ，则 <em>x</em> 和<em>y</em> 二进制至少有一位不同（即分别为 0 和 1 ）,根据此位可以将<em>nums</em>拆分为分别包含 <em>x</em> 和 <em>y</em> 的两个子数组。</p>
+<p>若整数<em>x⊕y</em>某二进制位为 1,则x,y的此二进制位一定不同。换言之，找到<em>x⊕y</em>某为1的二进制位，即可将数组<em>nums</em>拆分为上述的两个子数组。</p>
+<ul>
+<li>若a&amp;0001=1,则a的第一位为1；</li>
+<li>若a&amp;0010=1,则a的第二位为1；</li>
+<li>。。。。。</li>
+</ul>
+<p>初始化一个辅助变量<em>m=1</em> ，通过与运算从右向左循环判断，可 获取整数<em>x⊕y</em> 首位1。</p>
+<p> <strong>3.</strong>遍历判断<em>nums</em>中各数字和<em>m</em> 做与运算的结果，可将数组拆分为两个子数组，并分别对两个子数组遍历求异或，则可得到两个只出现一次的数字。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">int</span>[] singleNumbers(<span class="type">int</span>[] nums) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">x</span> <span class="operator">=</span> <span class="number">0</span>, y = <span class="number">0</span>, m = <span class="number">1</span>, n = <span class="number">0</span>;</span><br><span class="line">    <span class="comment">/*遍历异或</span></span><br><span class="line"><span class="comment">    a⊕b⊕c⊕d⊕d⊕f....x⊕t⊕y⊕a = (a⊕a)⊕(b⊕b)⊕(c⊕c)⊕....⊕x⊕y = x⊕y</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> num : nums) &#123;</span><br><span class="line">        n ^= num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    若x⊕y = 6⊕4 = 0110 ⊕ 0100 = 0010 第二位为1</span></span><br><span class="line"><span class="comment">    m = 1</span></span><br><span class="line"><span class="comment">    0010 &amp; 0001 = 0</span></span><br><span class="line"><span class="comment">    m &lt;&lt; 1  m = 10</span></span><br><span class="line"><span class="comment">    0010 &amp; 0010 = 10</span></span><br><span class="line"><span class="comment">    此时m = 10</span></span><br><span class="line"><span class="comment">    m &amp; x = 0010 &amp; 0110 = 0010 </span></span><br><span class="line"><span class="comment">    m &amp; y = 0010 &amp; 0100 = 0000</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">while</span> ((n &amp; m) == <span class="number">0</span>) &#123;</span><br><span class="line">        m &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">/*</span></span><br><span class="line"><span class="comment">    遍历数据，将每个数和m进行与操作 结果为0的一组，不为0的一组</span></span><br><span class="line"><span class="comment">    若a⊕m = 0, b⊕m = 0; c⊕m != 0, d⊕m != 0. x⊕m != 0, y⊕m = 0</span></span><br><span class="line"><span class="comment">    结果分为两组：</span></span><br><span class="line"><span class="comment">    1.num &amp; m = 0  (y⊕a⊕b⊕a⊕b) = y</span></span><br><span class="line"><span class="comment">    2.num &amp; m != 0  (x⊕c⊕d⊕d⊕c) = x</span></span><br><span class="line"><span class="comment">    */</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> num : nums) &#123;</span><br><span class="line">        <span class="keyword">if</span> ((num &amp; m) != <span class="number">0</span>) x ^= num;</span><br><span class="line">        <span class="keyword">else</span> y ^= num;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="keyword">new</span> <span class="title class_">int</span>[]&#123;x, y&#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>解题引用：</p>
+<p>作者：<a href="https://leetcode.cn/u/jyd/">Krahets</a><br>链接：<a href="https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/solution/jian-zhi-offer-56-i-shu-zu-zhong-shu-zi-tykom/">https://leetcode.cn/problems/shu-zu-zhong-shu-zi-chu-xian-de-ci-shu-lcof/solution/jian-zhi-offer-56-i-shu-zu-zhong-shu-zi-tykom/</a></p>
+]]></content>
+      <tags>
+        <tag>位运算</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>aa</title>
+    <url>/2023/07/07/aa/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>x的平方根</title>
+    <url>/2023/05/29/x%E7%9A%84%E5%B9%B3%E6%96%B9%E6%A0%B9/</url>
+    <content><![CDATA[<p>leetcode 69题：x的平方根</p>
+<span id="more"></span>
+<p>题目：给你一个非负整数 <code>x</code> ，计算并返回 <code>x</code> 的 <strong>算术平方根</strong>。由于返回类型是整数，结果只保留 <strong>整数部分</strong> ，小数部分将被 舍去 。<strong>注意：</strong>不允许使用任何内置指数函数和算符，例如 <code>pow(x, 0.5)</code> 或者 <code>x ** 0.5</code> </p>
+<h1 id="二分法"><a href="#二分法" class="headerlink" title="二分法"></a>二分法</h1><p>代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> <span class="variable">left</span> <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="type">int</span> <span class="variable">right</span> <span class="operator">=</span> x;</span><br><span class="line"><span class="keyword">while</span> (left &lt; right) &#123;</span><br><span class="line">    <span class="type">int</span> <span class="variable">mid</span> <span class="operator">=</span> (right - left) &gt;&gt; <span class="number">1</span> + left;</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">long</span>) mid * mid &gt; x) &#123;</span><br><span class="line">        right = mid;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        left = mid;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">return</span> left;</span><br></pre></td></tr></table></figure>
+<p>使用二分法结果正确，但是超出时间限制。</p>
+<h1 id="牛顿迭代法"><a href="#牛顿迭代法" class="headerlink" title="牛顿迭代法"></a>牛顿迭代法</h1><p><a href="https://leetcode.cn/link/?target=https://baike.baidu.com/item/牛顿迭代法">牛顿迭代法</a>是一种可以用来快速求解函数零点的方法。</p>
+<script type="math/tex; mode=display">
+y = f(x)=x^2 -C</script><p><em>C</em> 的平方根就是函数的零点。</p>
+<p>牛顿迭代法的本质是借助泰勒级数，从初始值开始快速向零点逼近。我们任取一个 $x_0$作为初始值，在每一步的迭代中，我们找到函数图像上的点 $(x_i, f(x_i))$,过该点作一条斜率为该点导数$f(x_i)$的直线，与横轴的交点记为$x_{i+1}$。$x_{i+1}$相较于而言$x_i$距离零点更近。在经过多次迭代后，我们就可以得到一个距离零点非常接近的交点。下图给出了从$x_0$开始迭代两次，得到$x_1$ 和$x_2$的过程。</p>
+<p><img src="/images/牛顿迭代.png" alt="牛顿迭代"></p>
+<p>根号<em>C</em>就是$x^2-C=0$的一个正实根，这个函数的导数是<em>2x</em>。函数上任一点 $(x_i, f(x_i))$处的切线斜率是2x。$x-f(x)/(2x)$就是一个比<em>x</em> 更接近的近似值。代入$f(x)=x^2 -C $得到$x-(x^2-a)/(2x)$,也就是$(x+C/x)/2$。</p>
+<p>代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="type">int</span> s;</span><br><span class="line"><span class="keyword">public</span> <span class="type">int</span> <span class="title function_">mySqrt</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    s = x;</span><br><span class="line">    <span class="keyword">if</span> (x == <span class="number">0</span>) <span class="keyword">return</span> x;</span><br><span class="line">    <span class="keyword">return</span> ((<span class="type">int</span>) (sqrts(x)));</span><br><span class="line">&#125;</span><br><span class="line"><span class="type">double</span> <span class="title function_">sqrts</span><span class="params">(<span class="type">double</span> x)</span> &#123;</span><br><span class="line">    <span class="type">double</span> <span class="variable">res</span> <span class="operator">=</span> (x + s / x) / <span class="number">2</span>;</span><br><span class="line">    <span class="keyword">if</span> (res == x) &#123;</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">return</span> sqrts(res); </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>牛顿迭代解题思路引用：</p>
+<p>作者：<a href="https://leetcode.cn/u/loafer/">LOAFER</a><br>链接：<a href="https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/">https://leetcode.cn/problems/sqrtx/solution/niu-dun-die-dai-fa-by-loafer/</a></p>
+]]></content>
+      <tags>
+        <tag>牛顿迭代法</tag>
+      </tags>
+  </entry>
+</search>
